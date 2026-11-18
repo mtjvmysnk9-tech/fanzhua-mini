@@ -5,12 +5,6 @@
 线上地址（本仓库经 GitHub Pages 部署）：<https://mtjvmysnk9-tech.github.io/fanzhua-mini/>
 正式站点（含真实上报）：<https://rumi-break-t3tamdheczu.qoder.zone/>
 
-## 分工
-
-- **我做的**：提出需求（人群、场景、"要真的能点、每条都要有出处、不许做成占位演示"）、决定危机词命中时必须停下手不推工具卡、决定两个地址都要（一个纯静态、一个带真实上报）、在浏览器里建仓并推送上线、逐页验收线上版本。
-- **AI 做的**：设计思路文档、内容（8 张打断卡、RRS-10 教育版条目、分流词表、求助与家长页）、前后端代码、部署。
-- 内容不靠谁的权威：每条依据都摊在站点「我的 → 来源与局限」和 [docs/DESIGN.md](docs/DESIGN.md) 里，包括词表原文，任何人都能推翻判得不准的那一条。
-
 ## 结构
 
 | 文件 | 作用 |
@@ -23,7 +17,7 @@
 | `assets/js/config.js` | 后端开关：按域名决定 `apiBase` 与是否允许上传 |
 | `functions/` | 正式后端的接口（校验 + 聚合），`routes.mjs` 纯业务、依赖注入 |
 | `schema.sql` | 上报表结构，只走迁移 API 支持的 DDL 子集 |
-| `dev/` | 本地一键复现：构建 + 起服务 + 36 条接口回归测试 |
+| `dev/` | 本地一键复现：构建 + 起服务 + 38 条接口回归测试 |
 | `docs/` | 设计思路、后端方案与合规清单 |
 
 前端无构建步骤、无依赖包、无第三方脚本。
@@ -71,7 +65,7 @@
 ```
 deno run --allow-read --allow-write dev/build.mjs   # 生成 dist/
 deno run --allow-read --allow-net dev/server.mjs    # http://127.0.0.1:8787
-deno run --allow-read --allow-net dev/test.mjs      # 36 条接口回归
+deno run --allow-read --allow-net dev/test.mjs      # 38 条接口回归
 ```
 
 地址写 `localhost` 时和正式站点一样允许上报，方便在本地验证整条链路。
