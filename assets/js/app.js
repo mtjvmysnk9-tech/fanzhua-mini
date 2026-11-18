@@ -5,7 +5,7 @@
   /* ---------------- 存储 ---------------- */
   var K = D.storageKey;
   function blank() {
-    return { checks: [], breaks: [], journal: [], actions: [], writing: [], scale: null, coach: [], coachState: { node: "s1", done: false }, worry: { time: "19:30", list: "" }, nextCard: { fixed: "", mine: "", act: "" } };
+    return { checks: [], breaks: [], journal: [], actions: [], writing: [], scale: null, coach: [], coachState: { node: "s1", done: false }, worry: { time: "19:30", list: "" }, nextCard: { fixed: "", mine: "", act: "" }, device: "", upload: false };
   }
   var S = (function () {
     try {
@@ -20,6 +20,79 @@
     try { localStorage.setItem(K, JSON.stringify(S)); }
     catch (e) { toast("存不下了：浏览器可能禁用了本地存储"); }
   }
+
+  /* ---------------- 匿名上报（默认关，只有正式站点才存在这条通道） ---------------- */
+  var CFG = window.RUMI_CONFIG || {};
+  var PEND = "fanzhua.pending";
+  var MAX_PENDING = 200;
+  var uploadOn = function () { return !!(CFG.apiBase && CFG.allowUpload && S.upload); };
+
+  function randHex(n) {
+    var b = new Uint8Array(n), out = "";
+    try { crypto.getRandomValues(b); }
+    catch (e) { for (var i = 0; i < n; i++) b[i] = Math.floor(Math.random() * 256); }
+    for (var j = 0; j < n; j++) out += (b[j] + 100).toString(16).slice(-2);
+    return out;
+  }
+  function newId() {
+    var h = randHex(16);
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
+  // 设备代号：随机、不换行、不含任何可读信息；清空数据时一并删掉。
+  function deviceId() {
+    if (!S.device) { S.device = randHex(16); save(); }
+    return S.device;
+  }
+  function getPending() {
+    try { var p = JSON.parse(localStorage.getItem(PEND)); return Array.isArray(p) ? p : []; }
+    catch (e) { return []; }
+  }
+  function setPending(list) {
+    try { localStorage.setItem(PEND, JSON.stringify(list.slice(-MAX_PENDING))); } catch (e) { }
+  }
+  // 只排数字：哪天、哪一档、哪张卡、前后各几分。文字一律不进这个函数。
+  function enqueue(kind, data) {
+    if (!uploadOn()) return;
+    var list = getPending();
+    list.push({ id: newId(), day: E.dayKey(), kind: kind, level: data.level, before: data.before, after: data.after, card_id: data.card_id });
+    setPending(list);
+    flush();
+  }
+  var flushing = false;
+  function flush() {
+    if (flushing || !uploadOn()) return;
+    var list = getPending();
+    if (!list.length) return;
+    flushing = true;
+    var batch = list.slice(0, 50);
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, CFG.timeoutMs || 8000) : null;
+    fetch(CFG.apiBase + "/api/events/batch", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ device_id: deviceId(), events: batch }),
+      signal: ctl ? ctl.signal : undefined
+    }).then(function (res) {
+      return res.json().then(function (j) { return { ok: res.ok, status: res.status, j: j }; });
+    }).then(function (r) {
+      // 只把这一批的 id 从队列里摘掉，别的批次（可能正在飞）不受影响。
+      var ids = {};
+      batch.forEach(function (e) { ids[e.id] = 1; });
+      var drop = r.ok || (r.status >= 400 && r.status < 500);
+      if (drop) setPending(getPending().filter(function (e) { return !ids[e.id]; }));
+    }).catch(function () { /* 断网/超时：下次打开页面再补发 */ })
+      .then(function () { flushing = false; });
+  }
+  function siteReport(days, done) {
+    if (!CFG.apiBase) { done(null); return; }
+    var ctl = ("AbortController" in window) ? new AbortController() : null;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, CFG.timeoutMs || 8000) : null;
+    fetch(CFG.apiBase + "/api/report?days=" + days, { headers: { accept: "application/json" }, signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { done(j); }).catch(function () { done(null); })
+      .then(function () { if (timer) clearTimeout(timer); });
+  }
+  setTimeout(function () { flush(); }, 1200);
 
   /* ---------------- 小工具 ---------------- */
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
@@ -109,8 +182,34 @@
       '<div class="stat"><b>' + drop + "</b><span>每次平均降(分)</span></div></div>";
   }
 
-  /* ---------------- 危机卡 ---------------- */
-  function crisisHTML() {
+  /* ---------------- 全站匿名趋势（只读，来自同源 Function） ---------------- */
+  function siteTrendPlaceholder() { return '<div class="empty">正在读取全站汇总……</div>'; }
+  function siteTrendHTML(r) {
+    if (!r) return '<div class="empty">汇总接口没响应。这条不影响你本机的任何记录。</div>';
+    if (r.insufficient) return '<div class="empty">开启上传的设备还不到 ' + (r.min_devices || 5) +
+      " 台，全站分组数字先不出。人够了这里自动亮。当前只公布总数：事件 " + r.events + " 条。</div>";
+    var days = r.per_day || [];
+    var vals = days.map(function (d) { return d.mean_level; });
+    var brks = days.map(function (d) { return d.breaks; });
+    var cardRow = (r.cards || []).slice(0, 3).map(function (c) {
+      var name = (D.cards.filter(function (x) { return x.id === c.id; })[0] || {}).title || c.id;
+      return '<div class="stat"><b>' + c.uses + "</b><span>" + E.esc(name) + (c.mean_drop === null ? "" : " 均降 " + c.mean_drop) + "</span></div>";
+    }).join("");
+    return (days.length > 1 ? spark(days.map(function (d) { return d.day; }), vals, brks) : "") +
+      '<div class="stats"><div class="stat"><b>' + r.devices + "</b><span>开启上传的设备</span></div>" +
+      '<div class="stat"><b>' + r.person_days + "</b><span>人·日样本</span></div>" +
+      '<div class="stat"><b>' + (r.mean_drop === null ? "—" : r.mean_drop) + "</b><span>打断后平均降(分)</span></div>" +
+      cardRow + "</div>" +
+      '<p class="tiny" style="margin-top:10px">以上是把所有人的数字加在一起算的，不含文字、不含排名；样本少于 5 台设备时分组数字不生成。' +
+      "生成时间 " + E.esc(String(r.generated_at || "").slice(0, 16).replace("T", " ")) + " UTC。</p>";
+  }
+  function renderSiteTrend() {
+    var el = $("#siteTrend");
+    if (!el) return;
+    siteReport(14, function (r) { if ($("#siteTrend") === el) el.innerHTML = siteTrendHTML(r); });
+  }
+
+  /* ---------------- 危机卡 ---------------- */  function crisisHTML() {
     return '<div class="crisis"><h3>先处理安全，再处理想法</h3><ol>' +
       D.help.steps.map(function (s) { return "<li>" + E.esc(s) + "</li>"; }).join("") + "</ol>" +
       D.help.lines.map(function (l) {
@@ -227,6 +326,8 @@
       var text = said.value.trim();
       S.checks.push({ ts: Date.now(), day: E.dayKey(), level: +lv.value, trigger: chosen || "", note: text, kind: text ? E.classify(text).kind : "" });
       save();
+      // 命中危机词的这一条不上报，哪怕开关是开的。
+      if (!E.isCrisis(text).length) enqueue("check", { level: +lv.value });
       $("#todayCount").textContent = S.checks.filter(function (c) { return c.day === E.dayKey(); }).length;
       said.value = ""; renderSaid();
       toast("已存下：强度 " + lv.value + "/10");
@@ -337,7 +438,9 @@
     a.addEventListener("input", function () { $("#a4v").textContent = a.value; });
     $("#record").addEventListener("click", function () {
       S.breaks.push({ ts: Date.now(), cardId: c.id, before: +b.value, after: +a.value });
-      save(); toast("存下了，降 " + (+b.value - +a.value) + " 分");
+      save();
+      enqueue("break", { before: +b.value, after: +a.value, card_id: c.id });
+      toast("存下了，降 " + (+b.value - +a.value) + " 分");
       b.value = a.value; $("#b4v").textContent = a.value;
     });
     clickHook = null;
@@ -463,6 +566,7 @@
       '<div class="btns" style="margin-top:10px"><button class="btn" id="jsave" type="button">存进记录</button>' +
       '<a class="btn ghost" href="#/talk">聊聊</a></div></div></section>' +
       '<section class="sec"><h2>两周走势</h2><div class="card">' + trendBlock() + "</div></section>" +
+      (CFG.apiBase ? '<section class="sec"><h2>全站匿名趋势</h2><div class="card" id="siteTrend">' + siteTrendPlaceholder() + "</div></section>" : "") +
       '<section class="sec"><h2>表达性书写（4 天，每次 15–20 分钟）</h2>' +
       '<p class="hint">可选。写了更难受就停 —— 这是本工具里的明确规则，不算失败。</p>' +
       '<div class="list">' + D.writing.map(function (w, i) {
@@ -476,6 +580,7 @@
       '<p class="hint">分类由词表规则给出，命中词直接显示；判得不准可以手动改。</p>' +
       '<div class="list" id="jlist">' + (S.journal.length ? S.journal.slice().reverse().map(jRow).join("") : '<div class="empty">还没有记录。上面写一条，就能看到规则怎么判。</div>') + "</div></section>";
 
+    renderSiteTrend();
     var ta = $("#jtext");
     function preview() {
       var t = ta.value;
@@ -687,7 +792,9 @@
       '<section class="sec"><div class="list">' +
       menu("#/help", "12356", "求助与热线", "现在就打 · 也教怎么判断该不该找专业帮助", "a") +
       menu("#/parents", "长", "家长 / 老师怎么说", "别陪着一起绕圈（共同反刍）", "b") +
-      menu("#/privacy", "隐", "数据与隐私", cfg.apiBase ? "后端已配置：" + cfg.apiBase : "未配置后端 · 纯本地") +
+      menu("#/privacy", "隐", "数据与隐私",
+        cfg.apiBase ? (S.upload ? "匿名数字上报：已开启 · 可在这一页关掉" : "匿名数字上报：已关闭 · 一切都在这台设备")
+          : "未配置后端 · 纯本地") +
       menu("#/sources", "※", "来源与局限", "每句话的出处，以及做不到什么") +
       "</div></section>" +
       '<section class="sec"><div class="card"><h2 style="margin:0 0 6px;font-size:15.5px">这个工具在做什么</h2>' +
@@ -744,20 +851,43 @@
   }
 
   function vPrivacy() {
-    var cfg = window.RUMI_CONFIG || {};
+    var pCount = getPending().length;
     view.innerHTML =
       '<section class="sec"><div class="card"><h2 style="margin:0 0 6px;font-size:16px">默认：一切都在这台设备</h2>' +
       '<p class="small">打卡、卡片记录、日志、书写、量表、对话全部存在浏览器 localStorage（键名 <kbd>' + E.esc(K) + "</kbd>）。" +
-      "没有账号、没有上传、没有埋点，也没有第三方脚本或 CDN。</p>" +
-      '<p class="tiny" style="margin-top:8px">后端状态：' + E.esc(cfg.apiBase ? cfg.apiBase : "未配置。即使配了地址，也只有你在“我的 → 数据与隐私”里手动打开上传开关，页面才会请求网络。") + "</p></div></section>" +
+      "没有账号、没有埋点、没有第三方脚本或 CDN。</p>" +
+      (CFG.apiBase
+        ? '<div class="switch" style="margin-top:14px"><input type="checkbox" id="upSwitch" ' + (S.upload ? "checked" : "") +
+          ' aria-label="匿名数字上报开关"><div class="grow"><strong style="font-size:15px">匿名数字上报：' +
+          (S.upload ? "已开启" : "已关闭") + "</strong>" +
+          '<p class="tiny" style="margin-top:2px">开了之后，只把下面这几样数字发给本站后端；关了就一个字节都不发。</p></div></div>' +
+          '<p class="tiny" style="margin-top:12px">会发：日期、强度 0–10、卡片编号、打断前后各几分、一个随机设备代号（<code>' + E.esc(deviceId().slice(0, 8)) + "…</code>）。<br>" +
+          "不会发：你写的任何文字、日志、书写、量表答题、对话内容、姓名、手机号、位置、通讯录。命中危机词的那一次即使开着也不发。</p>" +
+          '<p class="tiny" style="margin-top:8px">后端只保留 30 天；全站汇总按人·日合并，开启上传的设备不足 5 台时不生成分组数字。' +
+          (pCount ? "当前有 " + pCount + " 条在等设备联网补发。" : "当前没有待补发的数据。") + "</p>" +
+          '<div class="btns" style="margin-top:12px"><a class="btn ghost" href="admin.html">看全站汇总页</a>' +
+          '<button class="btn soft" id="dropPend" type="button">清掉待补发队列</button></div>'
+        : '<p class="tiny" style="margin-top:8px">后端状态：这个地址（' + E.esc(location.hostname) + "）是静态演示，没有上报通道，页面不会发出任何网络请求。</p>") +
+      "</div></section>" +
       '<section class="sec"><div class="list">' +
       '<div class="card item tap" id="exp"><div class="glyph">↓</div><div class="grow"><h3>导出成 JSON</h3><p>复制全部数据，自己存一份</p></div></div>' +
       '<div class="card item tap" id="imp"><div class="glyph a">↑</div><div class="grow"><h3>导入 / 换手机</h3><p>粘贴之前导出的 JSON</p></div></div>' +
-      '<div class="card item tap" id="clr"><div class="glyph a">✕</div><div class="grow"><h3>立刻清空全部数据</h3><p>不可撤销</p></div></div>' +
+      '<div class="card item tap" id="clr"><div class="glyph a">✕</div><div class="grow"><h3>立刻清空全部数据</h3><p>含设备代号与待补发队列，不可撤销</p></div></div>' +
       '<a class="card item tap" href="#/help"><div class="glyph b">☏</div><div class="grow"><h3>如果现在很难受</h3><p>求助入口</p></div></a>' +
       "</div></section>" +
       '<section class="sec"><div class="card"><h2 style="margin:0 0 6px;font-size:15.5px">为什么坚持本地存</h2>' +
-      '<p class="small">反刍的内容往往是一个孩子最不愿被别人看到的那部分。把它默认写进云端，等于让工具本身变成风险来源。所以这里默认不联网；真要接后端（趋势分析、真人对话），走 <code>docs/BACKEND-ALIYUN.md</code> 里的授权与数据最小化方案。</p></div></section>';
+      '<p class="small">反刍的内容往往是一个孩子最不愿被别人看到的那部分。把它默认写进云端，等于让工具本身变成风险来源。所以上报是关的，要你自己开；开也只走数字，文字永远不出这台设备。</p>' +
+      '<p class="tiny" style="margin-top:8px">后端代码在本仓库 <code>functions/</code> + <code>schema.sql</code>，另一条自建路径（阿里云函数计算）在 <code>docs/BACKEND-ALIYUN.md</code>。</p></div></section>';
+
+    var sw = $("#upSwitch");
+    if (sw) sw.addEventListener("change", function () {
+      S.upload = !!sw.checked; save();
+      sw.parentNode.querySelector("strong").textContent = "匿名数字上报：" + (S.upload ? "已开启" : "已关闭");
+      toast(S.upload ? "已开启：只发数字" : "已关闭：不再发出任何数据");
+      if (S.upload) flush();
+    });
+    var dp = $("#dropPend");
+    if (dp) dp.addEventListener("click", function () { setPending([]); vPrivacy(); toast("待补发队列已清空"); });
 
     $("#exp").addEventListener("click", function () {
       var txt = JSON.stringify(S, null, 2);
@@ -775,15 +905,17 @@
           if (!obj || typeof obj !== "object" || !Array.isArray(obj.checks) || !Array.isArray(obj.breaks)) throw new Error("bad");
           var b = blank();
           Object.keys(b).forEach(function (k) { if (obj[k] === undefined) obj[k] = b[k]; });
-          S = obj; save(); closeSheet(); location.hash = "#/today"; toast("导入成功");
+          // 上传开关只认这台设备上的这次操作，不从粘贴的 JSON 里继承。
+          obj.upload = false;
+          S = obj; save(); closeSheet(); location.hash = "#/today"; toast("导入成功 · 上报仍是关闭状态");
         } catch (e) { toast("格式不对，没动你的数据"); }
       });
     });
     $("#clr").addEventListener("click", function () {
-      openSheet('<h2>确认清空？</h2><p class="small">这会删掉这台设备上本工具的全部记录：打卡、打断、日志、书写、量表、对话。删完不能恢复。</p>' +
+      openSheet('<h2>确认清空？</h2><p class="small">这会删掉这台设备上本工具的全部记录：打卡、打断、日志、书写、量表、对话，以及随机设备代号和还没发出去的补发队列。删完不能恢复。</p>' +
         '<button class="btn warn" id="clrgo" type="button" style="margin-top:12px">确认清空</button>');
       $("#clrgo").addEventListener("click", function () {
-        S = blank(); save(); closeSheet(); location.hash = "#/today"; toast("已清空");
+        S = blank(); save(); setPending([]); closeSheet(); location.hash = "#/today"; toast("已清空");
       });
     });
     clickHook = null;

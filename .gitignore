@@ -5,3 +5,8 @@ node_modules/
 .aliyun/
 s.yaml
 .fcignore
+
+# 构建产物：GitHub Pages 用 gh-pages 分支，正式站点由 Sites 上传，都不进版本库
+dist/
+# Sites 本地草稿描述文件（含云端 action/deployment 记录，不属于源码）
+*.qoder.site

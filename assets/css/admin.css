@@ -1,0 +1,57 @@
+/* 全站汇总页：独立版式，颜色/字号/间距/圆角/动效全部取自 app.css 的 --site-* 变量层 */
+.admin{max-width:1020px;margin:0 auto;padding:calc(24px * var(--site-space)) calc(18px * var(--site-space)) calc(48px * var(--site-space))}
+.ahead{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-gap);flex-wrap:wrap;
+  padding-bottom:calc(14px * var(--site-space));border-bottom:1px solid var(--line)}
+.ahead h1{margin:0;font-size:calc(26px * var(--site-type));letter-spacing:-.01em}
+.ahead p{margin:4px 0 0;color:var(--muted);font-size:var(--fs-sm)}
+.along{display:inline-block;padding:calc(8px * var(--site-space)) calc(14px * var(--site-space));
+  background:var(--primary);color:var(--site-on-accent);text-decoration:none;
+  border-radius:calc(var(--radius) * .78);font-size:var(--fs-sm);transition:opacity var(--dur)}
+.along:hover{opacity:.86}
+
+.ablock{margin-top:calc(22px * var(--site-space))}
+.ablock h2{margin:0 0 calc(10px * var(--site-space));font-size:var(--fs-md);font-weight:650}
+.ablock.two{display:grid;grid-template-columns:1fr 1fr;gap:calc(22px * var(--site-space))}
+.ablock.two h2{grid-column:auto}
+@media (max-width:720px){.ablock.two{grid-template-columns:1fr}}
+
+.apanel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:var(--sp-card);box-shadow:var(--shadow)}
+
+.arange{display:flex;align-items:center;gap:calc(6px * var(--site-space));flex-wrap:wrap;margin-bottom:calc(12px * var(--site-space))}
+.arange button{border:1px solid var(--line);background:var(--card);color:var(--ink);
+  padding:calc(7px * var(--site-space)) calc(13px * var(--site-space));border-radius:999px;
+  font:inherit;font-size:var(--fs-sm);cursor:pointer;transition:border-color var(--dur),background var(--dur)}
+.arange button.on{background:var(--primary);border-color:var(--primary);color:var(--site-on-accent)}
+.arange .agrow{flex:1}
+.arange .aghost{color:var(--muted)}
+
+.astatus{font-size:var(--fs-sm);color:var(--muted);margin-bottom:calc(12px * var(--site-space))}
+.astatus.bad{color:var(--warn)}
+.astatus .abadge{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
+  background:var(--warn-soft);color:var(--warn);font-size:var(--fs-xs)}
+
+.akpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-gap)}
+.akpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:var(--sp-card)}
+.akpi b{display:block;font-size:calc(28px * var(--site-type));line-height:1.15;font-variant-numeric:tabular-nums}
+.akpi span{display:block;margin-top:2px;color:var(--muted);font-size:var(--fs-xs)}
+
+.abars{display:flex;flex-direction:column;gap:calc(7px * var(--site-space))}
+.abar{display:grid;grid-template-columns:calc(74px * var(--site-type)) 1fr calc(52px * var(--site-type));
+  align-items:center;gap:calc(9px * var(--site-space));font-size:var(--fs-sm)}
+.abar .track{height:10px;background:var(--primary-soft);border-radius:999px;overflow:hidden}
+.abar .fill{display:block;height:100%;background:var(--primary);border-radius:999px;transition:width var(--dur)}
+.abar .val{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.atable{width:100%;border-collapse:collapse;font-size:var(--fs-sm)}
+.atable th,.atable td{text-align:left;padding:calc(8px * var(--site-space)) 0;border-bottom:1px solid var(--line)}
+.atable th{color:var(--muted);font-weight:600;font-size:var(--fs-xs)}
+.atable td.n,.atable th.n{text-align:right;font-variant-numeric:tabular-nums}
+.atable tr:last-child td{border-bottom:0}
+
+.anotes{margin:0;padding-left:1.2em;color:var(--muted);font-size:var(--fs-sm);line-height:1.75}
+.anotes li{margin-bottom:4px}
+.anotes b{color:var(--ink);font-weight:600}
+
+.aempty{color:var(--muted);font-size:var(--fs-sm);text-align:center;padding:calc(18px * var(--site-space)) 0}
+@media (prefers-reduced-motion: reduce){.along,.arange button,.abar .fill{transition:none}}

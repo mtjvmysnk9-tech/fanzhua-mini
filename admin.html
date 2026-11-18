@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>全站汇总 · 反刍打断</title>
+<meta name="description" content="反刍打断的只读匿名汇总：只有加总后的数字，没有文字、没有个人记录。">
+<meta name="theme-color" content="#F6F2EC">
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="assets/icon/app-icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/css/app.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+<div class="admin">
+  <header class="ahead">
+    <div>
+      <h1>全站匿名汇总</h1>
+      <p>只读 · 加总后的数字 · 不含任何文字记录</p>
+    </div>
+    <a class="along" href="index.html">回到工具</a>
+  </header>
+
+  <section class="ablock">
+    <div class="arange" id="range" role="group" aria-label="时间范围">
+      <button type="button" data-days="7">近 7 天</button>
+      <button type="button" data-days="14" class="on">近 14 天</button>
+      <button type="button" data-days="30">近 30 天</button>
+      <span class="agrow"></span>
+      <button type="button" id="refresh" class="aghost">刷新</button>
+    </div>
+    <div id="status" class="astatus" role="status" aria-live="polite"></div>
+    <div id="kpis" class="akpis"></div>
+  </section>
+
+  <section class="ablock">
+    <h2>每日平均强度与打断次数</h2>
+    <div id="trend" class="apanel"></div>
+  </section>
+
+  <section class="ablock two">
+    <div>
+      <h2>强度分布</h2>
+      <div id="hist" class="apanel"></div>
+    </div>
+    <div>
+      <h2>哪张卡用得多、降得多</h2>
+      <div id="cards" class="apanel"></div>
+    </div>
+  </section>
+
+  <section class="ablock">
+    <h2>这一页能看到什么、看不到什么</h2>
+    <ul class="anotes" id="notes"></ul>
+  </section>
+</div>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

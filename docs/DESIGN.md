@@ -168,9 +168,14 @@
   "coach":     [{ "role": "me|them|sys", "text": "" }],
   "coachState":{ "node": "s1", "done": false },
   "worry":     { "time": "19:30", "list": "" },
-  "nextCard":  { "fixed": "", "mine": "", "act": "" }
+  "nextCard":  { "fixed": "", "mine": "", "act": "" },
+  "device":    "",   // 32 位随机十六进制，只在开关打开时才生成；可一键重置
+  "upload":    false // 上报开关，默认关；导入旧数据后强制回到关
 }
 ```
+
+另有一个待发队列 `localStorage["fanzhua.pending"]`（上限 200 条）：断网/后端 5xx 时留在本机重试，
+成功一条摘一条，4xx 视为"这条永远不会被接受"直接丢弃，不让队列无限长。
 
 **唯一的"算法"是词表分流**（`engine.js: classify()`）：字符串包含匹配，命中词原样显示给用户，
 四类结果 `repeat / action / mixed / unknown`，全部可手动改。刻意不做语义模型——
@@ -202,9 +207,23 @@
 
 ## 10. 后端接入点
 
-静态版**不需要后端就能成立**。需要后端的只有两件事：真对话、跨设备同步。
-方案、接口契约、合规清单、成本账和"先别做"的理由全部在 `docs/BACKEND-ALIYUN.md`；
-函数示例代码在 `aliyun-fc/chat.js`（未部署）。开关在 `assets/js/config.js`：`apiBase` 为空即纯本地。
+静态版**不需要后端就能成立**——GitHub Pages 那个域名上，`apiBase` 是空的，一个请求都不发。
+
+正式站点（`https://rumi-break-t3tamdheczu.qoder.zone/`）多了一件事：**匿名数字上报 + 全站汇总**。
+需要后端的一直只有两件事，现在只做了其中风险最低的一半：
+
+| 想干的事 | 状态 | 敏感文字出不出设备 |
+|---|---|---|
+| 跨设备看趋势（匿名聚合） | **已上线**：`functions/` + 一张 `app.events` | 不出。只发日期、0–10 的分、卡片 id |
+| 真对话（陪练接大模型） | **没做**：仍是本地预设脚本 | 一旦做就得出，所以没做 |
+
+三条设计约束：上传开关默认关闭且**只在 `*.qoder.zone` / `localhost` 生效**；
+量表得分与危机词命中**不发**；窗口内设备不足 5 台时接口只回总数、明细清空——
+小样本的分组统计能反推出一个人，那就不算匿名。
+
+接口契约、聚合门槛、保留 30 天，以及上线时在云端真机测出来的四条 provider 约束，
+都在 `docs/BACKEND-ALIYUN.md` 第 9 节；同文档的 2–8 节保留**阿里云 FC + 百炼**方案作为换平台时的备选
+（示例代码在 `aliyun-fc/`，未部署）。本地一键复现整条链路：`deno run --allow-read --allow-net dev/server.mjs`。
 
 ---
 
@@ -254,17 +273,26 @@
 ```
 fanzhua-mini/
 ├─ index.html                 单页外壳 + tabbar（hash 路由，无需服务器重写）
+├─ admin.html                 全站匿名汇总（只读、noindex，不在导航里）
 ├─ manifest.json              添加到主屏幕
 ├─ .nojekyll                  关 Jekyll，纯静态
 ├─ assets/css/app.css         设计变量 + 组件（含暗色）
-├─ assets/js/config.js        后端开关（默认空）
+├─ assets/css/admin.css       汇总页样式，同样只读 --site-* 变量
+├─ assets/js/config.js        按域名决定 apiBase / allowUpload（GitHub Pages 上=纯本地）
 ├─ assets/js/data.js          内容层：8 张卡、10 题、词表、来源 —— 改文案只动这里
 ├─ assets/js/engine.js        逻辑层：分流 / 危机 / 建议 / 陪练状态机（纯函数，可单测）
-├─ assets/js/app.js           视图层：路由、表单、计时、图表、导入导出
+├─ assets/js/app.js           视图层：路由、表单、计时、图表、导入导出、上报队列
+├─ assets/js/admin.js         汇总页：拉 /api/report、画 SVG、显示门槛状态
 ├─ assets/icon/               SVG 图标 + 512 PNG（主屏用）
+├─ functions/index.ts         Sites Function 入口（运行时注入 SDK）
+├─ functions/routes.mjs       接口：校验、入库、聚合（依赖注入，纯业务）
+├─ schema.sql                 app.events 表结构（迁移 API 子集）
+├─ dev/build.mjs              把公开文件拷进 dist/，顺手挡住绝对路径资源
+├─ dev/server.mjs             本地一键：静态 + 真接口 + 假依赖
+├─ dev/test.mjs               38 条接口回归
 ├─ docs/DESIGN.md             本文
-├─ docs/BACKEND-ALIYUN.md     阿里云方案与合规清单
-└─ aliyun-fc/chat.js          FC 函数示例代码（未部署）
+├─ docs/BACKEND-ALIYUN.md     已部署接口 + 阿里云备选方案与合规清单
+└─ aliyun-fc/chat.js          FC 函数示例代码（未部署，备选）
 ```
 
 内容层 / 逻辑层 / 视图层分开，是为了让**改一句话不用碰代码**：
