@@ -52,10 +52,11 @@ git config user.email "<用户名>@users.noreply.github.com"
 git add -A && git commit -m "反刍打断 v1：静态站点 + 设计文档"
 git remote add origin git@github.com:<用户名>/<仓库名>.git
 git push -u origin master:main        # 本地默认 master，GitHub 默认 main
+git push origin master:gh-pages       # 推 gh-pages 分支，Pages 会自动开启
 ```
 
-然后在仓库 **Settings → Pages** 选 `Deploy from a branch` / `main` / `/(root)`，保存。
-一两分钟后访问 `https://<用户名>.github.io/<仓库名>/`。
+之后每次更新只需 `git push -f origin master:gh-pages`（站点读的是 `gh-pages` 分支，`main` 只当源码）。
+不想留两个分支的话，也可以在仓库 **Settings → Pages** 把 Source 改成 `main` / `/(root)`，然后删掉 `gh-pages`。
 
 **所有资源引用都是相对路径**，所以挂在 `/仓库名/` 子路径下也能正常工作；不要改成 `/assets/...`。
 
