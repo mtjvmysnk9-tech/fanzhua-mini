@@ -1,0 +1,17 @@
+{
+  "name": "反刍打断 · 青少年越想越累的自我调节工具",
+  "short_name": "反刍打断",
+  "description": "帮 12–18 岁识别并打断反刍思维：温度计、打断卡片、日志分流、RRS 自评、本地陪练。数据默认只存在本机。",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F6F2EC",
+  "theme_color": "#F6F2EC",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "assets/icon/app-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "assets/icon/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>反刍打断 · 青少年越想越累的自我调节工具</title>
+<meta name="description" content="帮 12–18 岁识别并打断反刍思维：温度计、打断卡片、日志分流、RRS 自评、本地陪练。数据默认只存在你自己的手机里。">
+<meta name="theme-color" content="#F6F2EC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="反刍打断">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="assets/icon/app-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icon/app-icon-512.png">
+<link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+<div class="phone">
+  <header class="topbar">
+    <button class="back" id="back" type="button" aria-label="返回" hidden>‹</button>
+    <div class="titles">
+      <h1 id="pageTitle">今天</h1>
+      <p id="pageSub">先量一下，再决定要不要接着想</p>
+    </div>
+    <a class="sos" href="#/help" aria-label="求助入口">求助</a>
+  </header>
+
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <nav class="tabbar" id="tabbar">
+    <a href="#/today" data-tab="today"><span class="i">◎</span>今天</a>
+    <a href="#/break" data-tab="break"><span class="i">◱</span>打断</a>
+    <a href="#/journal" data-tab="journal"><span class="i">✎</span>记录</a>
+    <a href="#/scale" data-tab="scale"><span class="i">▤</span>自评</a>
+    <a href="#/more" data-tab="more"><span class="i">⋯</span>我的</a>
+  </nav>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-mask" data-close></div>
+  <div class="sheet-body" id="sheetBody" role="dialog" aria-modal="true"></div>
+</div>
+
+<noscript>这个站点需要 JavaScript 才能记录与计时。请在浏览器设置里允许脚本后刷新。</noscript>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/data.js"></script>
+<script src="assets/js/engine.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
